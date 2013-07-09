@@ -66,7 +66,7 @@ abstract class Kohana_Log_Writer {
 		return spl_object_hash($this);
 	}
 
-	/**
+/**
 	 * Formats a log entry.
 	 * 
 	 * @param   array   $message
@@ -76,20 +76,25 @@ abstract class Kohana_Log_Writer {
 	public function format_message(array $message, $format = "time --- level: body in file:line")
 	{
 		$message['time'] = Date::formatted_time('@'.$message['time'], Log_Writer::$timestamp, Log_Writer::$timezone, TRUE);
-		$message['level'] = $this->_log_levels[$message['level']];
+        $message['level'] = $this->_log_levels[$message['level']];
 
-		$string = strtr($format, $message);
+        unset($message['trace']);
+        if (isset($message['additional']['exception'])) {
+            $exception = $message['additional']['exception'];
+            unset($message['additional']);
+        }
+        
+        $string = strtr($format, $message);
+        if (isset($exception))
+        {
+            // Re-use as much as possible, just resetting the body to the trace
+            $message['body'] = $exception->getTraceAsString();
+            $message['level'] = $this->_log_levels[Log_Writer::$strace_level];
 
-		if (isset($message['additional']['exception']))
-		{
-			// Re-use as much as possible, just resetting the body to the trace
-			$message['body'] = $message['additional']['exception']->getTraceAsString();
-			$message['level'] = $this->_log_levels[Log_Writer::$strace_level];
+            $string .= PHP_EOL.strtr($format, $message);
+        }
 
-			$string .= PHP_EOL.strtr($format, $message);
-		}
-
-		return $string;
+        return $string;
 	}
 
 } // End Kohana_Log_Writer
